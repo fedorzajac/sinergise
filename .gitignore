@@ -1,0 +1,4 @@
+*.tiff
+old
+env
+__pycache__
