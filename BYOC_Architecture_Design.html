@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>BYOC Onboarding Workflow — Architecture Design</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #0f172a;
+    color: #e2e8f0;
+    min-height: 100vh;
+    font-family: 'SF Pro Display', 'Segoe UI', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ─── Header ─── */
+  .header {
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    border-bottom: 1px solid #1e293b;
+    padding: 32px 40px 28px;
+  }
+  .header-inner {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+  }
+  .header-icon {
+    background: #3b82f6;
+    border-radius: 10px;
+    padding: 10px 14px;
+    margin-top: 2px;
+    flex-shrink: 0;
+  }
+  .header-label {
+    font-size: 11px;
+    color: #64748b;
+    font-family: 'SF Mono', monospace;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  .header h1 {
+    font-size: 24px;
+    font-weight: 700;
+    color: #f1f5f9;
+    letter-spacing: -0.02em;
+    margin-bottom: 6px;
+  }
+  .header p {
+    font-size: 13px;
+    color: #64748b;
+    max-width: 580px;
+    line-height: 1.5;
+  }
+
+  /* ─── Body wrapper ─── */
+  .body { padding: 32px 40px 48px; }
+
+  /* ─── Section label row ─── */
+  .section-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+  .section-label span {
+    font-size: 11px;
+    color: #64748b;
+    font-family: 'SF Mono', monospace;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .section-label .line {
+    flex: 1;
+    height: 1px;
+    background: #1e293b;
+  }
+
+  /* ─── SVG diagram container ─── */
+  .diagram-wrap {
+    background: #0a1628;
+    border-radius: 12px;
+    border: 1px solid #1e293b;
+    padding: 24px 20px 20px;
+    margin-bottom: 40px;
+  }
+  .diagram-wrap svg { width: 100%; height: auto; }
+
+  /* ─── Phase pills ─── */
+  .pills {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 24px;
+  }
+  .pill {
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 8px;
+    color: #94a3b8;
+    padding: 8px 16px;
+    font-size: 12px;
+    font-family: 'SF Mono', monospace;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    user-select: none;
+  }
+  .pill .dot { font-size: 8px; }
+  .pill .count { color: #475569; font-size: 10px; }
+  .pill.active { /* set inline via JS */ }
+
+  /* ─── Phase block ─── */
+  .phase-block { margin-bottom: 20px; }
+  .phase-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+    cursor: pointer;
+  }
+  .phase-badge {
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-family: 'SF Mono', monospace;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+  .phase-title { font-size: 15px; font-weight: 600; color: #f1f5f9; }
+  .phase-count { font-size: 11px; color: #475569; margin-left: 12px; font-family: 'SF Mono', monospace; }
+
+  /* ─── Step card ─── */
+  .step-wrap { margin-bottom: 8px; margin-left: 44px; }
+  .step-card {
+    background: #141e2e;
+    border: 1px solid #1e293b;
+    border-radius: 10px;
+    padding: 14px 18px;
+    cursor: pointer;
+    transition: background 0.2s ease, border-color 0.2s ease;
+  }
+  .step-card.open { background: #1a2840; }
+
+  .step-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .step-head-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .step-id {
+    font-size: 11px;
+    font-family: 'SF Mono', monospace;
+    font-weight: 600;
+    min-width: 30px;
+  }
+  .step-title { font-size: 14px; color: #e2e8f0; font-weight: 500; }
+
+  .step-head-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+  }
+  .api-badge {
+    font-size: 9.5px;
+    font-family: 'SF Mono', monospace;
+    background: #1e293b;
+    color: #60a5fa;
+    padding: 3px 8px;
+    border-radius: 4px;
+    border: 1px solid #1e3a5f;
+    white-space: nowrap;
+  }
+  .chevron {
+    color: #475569;
+    font-size: 12px;
+    transition: transform 0.2s;
+    display: inline-block;
+  }
+  .step-card.open .chevron { transform: rotate(90deg); }
+
+  /* ─── Step body (detail) ─── */
+  .step-body {
+    display: none;
+    margin-top: 14px;
+    border-top: 1px solid #1e293b;
+    padding-top: 14px;
+  }
+  .step-card.open .step-body { display: block; }
+
+  .step-detail {
+    font-size: 13px;
+    color: #94a3b8;
+    line-height: 1.7;
+    white-space: pre-line;
+    font-family: 'SF Mono', monospace;
+    margin-bottom: 12px;
+  }
+  .critical-box {
+    background: #3b1f1f;
+    border: 1px solid #7f1d1d;
+    border-radius: 6px;
+    padding: 10px 14px;
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+  }
+  .critical-icon { color: #ef4444; font-size: 13px; flex-shrink: 0; }
+  .critical-text {
+    font-size: 12px;
+    color: #fca5a5;
+    font-family: 'SF Mono', monospace;
+    line-height: 1.5;
+  }
+
+  /* ─── Constraints grid ─── */
+  .constraints { margin-top: 36px; }
+  .constraints-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  .constraint-card {
+    background: #141e2e;
+    border-radius: 8px;
+    padding: 14px 16px;
+    border: 1px solid transparent; /* left-color set inline */
+  }
+  .constraint-title { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+  .constraint-desc { font-size: 12px; color: #64748b; line-height: 1.5; }
+
+  /* ─── Footer ─── */
+  .footer {
+    margin-top: 40px;
+    padding-top: 20px;
+    border-top: 1px solid #1e293b;
+    font-size: 10px;
+    color: #334155;
+    font-family: 'SF Mono', monospace;
+  }
+
+  /* responsive */
+  @media (max-width: 640px) {
+    .header, .body { padding-left: 20px; padding-right: 20px; }
+    .constraints-grid { grid-template-columns: 1fr; }
+    .step-wrap { margin-left: 0; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ─── Header ─── -->
+<header class="header">
+  <div class="header-inner">
+    <div class="header-icon">
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+        <path d="M14 2L26 9V19L14 26L2 19V9L14 2Z" stroke="white" stroke-width="2" fill="none"/>
+        <path d="M14 2L14 26M2 9L14 16L26 9" stroke="white" stroke-width="1.5" opacity="0.4"/>
+      </svg>
+    </div>
+    <div>
+      <div class="header-label">Task 2 — Architecture Design</div>
+      <h1>BYOC Onboarding Workflow</h1>
+      <p>End-to-end design for ingesting a 50 TB aerial imagery archive from AWS S3 (us-west-2) into the Copernicus Data Space Ecosystem via the Sentinel Hub Bring Your Own COG API.</p>
+    </div>
+  </div>
+</header>
+
+<!-- ─── Main body ─── -->
+<div class="body">
+
+  <!-- Architecture Diagram -->
+  <div class="section-label"><span>System Architecture</span><div class="line"></div></div>
+  <div class="diagram-wrap">
+    <svg viewBox="0 0 900 260">
+      <defs>
+        <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" marker-width="6" marker-height="6" orient="auto-start-reverse">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#64748b"/>
+        </marker>
+      </defs>
+      <!-- AWS -->
+      <rect x="20" y="40" width="200" height="180" rx="12" fill="#1e3a5f" stroke="#3b82f6" stroke-width="1.5" stroke-dasharray="6 3"/>
+      <text x="32" y="62" fill="#3b82f6" font-size="10" font-family="'SF Mono', monospace" font-weight="600">AWS us-west-2</text>
+      <rect x="35" y="75" width="170" height="60" rx="8" fill="#1e293b" stroke="#3b82f6" stroke-width="1"/>
+      <text x="120" y="100" fill="#93c5fd" font-size="11" text-anchor="middle" font-family="'SF Mono', monospace">S3 Bucket</text>
+      <text x="120" y="116" fill="#64748b" font-size="9" text-anchor="middle" font-family="'SF Mono', monospace">50 TB Raw Imagery</text>
+      <rect x="35" y="148" width="170" height="55" rx="8" fill="#1e293b" stroke="#60a5fa" stroke-width="1"/>
+      <text x="120" y="172" fill="#60a5fa" font-size="10" text-anchor="middle" font-family="'SF Mono', monospace">COG Conversion</text>
+      <text x="120" y="186" fill="#64748b" font-size="8.5" text-anchor="middle" font-family="'SF Mono', monospace">GDAL · Parallel Jobs</text>
+      <!-- migrate arrow -->
+      <line x1="220" y1="110" x2="290" y2="110" stroke="#f59e0b" stroke-width="2" marker-end="url(#arrow)"/>
+      <text x="255" y="102" fill="#f59e0b" font-size="8" text-anchor="middle" font-family="'SF Mono', monospace">migrate</text>
+      <!-- CreoDIAS -->
+      <rect x="295" y="20" width="260" height="220" rx="12" fill="#1a2332" stroke="#a78bfa" stroke-width="1.5"/>
+      <text x="307" y="42" fill="#a78bfa" font-size="10" font-family="'SF Mono', monospace" font-weight="600">CreoDIAS / CDSE</text>
+      <rect x="310" y="52" width="230" height="58" rx="8" fill="#1e293b" stroke="#a78bfa" stroke-width="1"/>
+      <text x="425" y="77" fill="#c4b5fd" font-size="11" text-anchor="middle" font-family="'SF Mono', monospace">CreoDIAS S3 Bucket</text>
+      <text x="425" y="94" fill="#64748b" font-size="8.5" text-anchor="middle" font-family="'SF Mono', monospace">+ Bucket Policy (SH read access)</text>
+      <rect x="310" y="118" width="230" height="58" rx="8" fill="#1e293b" stroke="#fb923c" stroke-width="1"/>
+      <text x="425" y="143" fill="#fb923c" font-size="11" text-anchor="middle" font-family="'SF Mono', monospace">BYOC API</text>
+      <text x="425" y="158" fill="#64748b" font-size="8.5" text-anchor="middle" font-family="'SF Mono', monospace">Collection · Tiles · Bands</text>
+      <rect x="310" y="184" width="230" height="46" rx="8" fill="#1e293b" stroke="#34d399" stroke-width="1"/>
+      <text x="425" y="212" fill="#34d399" font-size="11" text-anchor="middle" font-family="'SF Mono', monospace">Sentinel Hub Platform</text>
+      <!-- internal arrows -->
+      <line x1="425" y1="110" x2="425" y2="118" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+      <line x1="425" y1="176" x2="425" y2="184" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+      <!-- serves arrow -->
+      <line x1="555" y1="207" x2="620" y2="207" stroke="#34d399" stroke-width="2" marker-end="url(#arrow)"/>
+      <text x="587" y="199" fill="#34d399" font-size="7.5" text-anchor="middle" font-family="'SF Mono', monospace">serves</text>
+      <!-- Consumers -->
+      <rect x="625" y="40" width="240" height="220" rx="12" fill="#1a2332" stroke="#34d399" stroke-width="1.5"/>
+      <text x="637" y="62" fill="#34d399" font-size="10" font-family="'SF Mono', monospace" font-weight="600">Consumers</text>
+      <rect x="640" y="72" width="210" height="38" rx="8" fill="#1e293b" stroke="#34d399" stroke-width="0.8"/>
+      <text x="745" y="96" fill="#86efac" font-size="10.5" text-anchor="middle" font-family="'SF Mono', monospace">Copernicus Browser</text>
+      <rect x="640" y="118" width="210" height="38" rx="8" fill="#1e293b" stroke="#60a5fa" stroke-width="0.8"/>
+      <text x="745" y="142" fill="#93c5fd" font-size="10.5" text-anchor="middle" font-family="'SF Mono', monospace">Process API</text>
+      <rect x="640" y="164" width="210" height="38" rx="8" fill="#1e293b" stroke="#a78bfa" stroke-width="0.8"/>
+      <text x="745" y="188" fill="#c4b5fd" font-size="10.5" text-anchor="middle" font-family="'SF Mono', monospace">OGC WMS / WMTS</text>
+      <line x1="620" y1="91"  x2="640" y2="91"  stroke="#34d399" stroke-width="1.2" marker-end="url(#arrow)"/>
+      <line x1="620" y1="137" x2="640" y2="137" stroke="#60a5fa" stroke-width="1.2" marker-end="url(#arrow)"/>
+      <line x1="620" y1="183" x2="640" y2="183" stroke="#a78bfa" stroke-width="1.2" marker-end="url(#arrow)"/>
+    </svg>
+  </div>
+
+  <!-- Phase pills -->
+  <div class="section-label"><span>Workflow Phases — click to expand</span><div class="line"></div></div>
+  <div class="pills" id="pills"></div>
+
+  <!-- Phase cards (rendered by JS) -->
+  <div id="phases"></div>
+
+  <!-- Key Constraints -->
+  <div class="constraints">
+    <div class="section-label"><span>Key Constraints &amp; Decisions</span><div class="line"></div></div>
+    <div class="constraints-grid" id="constraints"></div>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">Sources: docs.sentinel-hub.com/api/latest/api/byoc · documentation.dataspace.copernicus.eu/APIs/SentinelHub/Byoc · sentinelhub-py docs</div>
+</div>
+
+<!-- ─── Data + Logic ─── -->
+<script>
+// ─── DATA ────────────────────────────────────────────────────────────────────
+const phases = [
+  {
+    id: 0, label: "Phase 0", title: "Pre-flight & Assessment", color: "#60a5fa",
+    steps: [
+      { id:"0.1", title:"Audit Source Data in AWS S3 (us-west-2)",
+        detail:"Inventory the 50 TB archive. Determine: native format (GeoTIFF, JP2, etc.), band count per file, CRS/projection used, whether files are already COG-compliant, and whether nodata values are defined. This step avoids surprises mid-pipeline.",
+        api:null, critical:"The CDSE/CreoDIAS ecosystem does NOT operate on AWS us-west-2. Data must be migrated — see Phase 1." },
+      { id:"0.2", title:"Provision a Copernicus Service Account",
+        detail:"BYOC API is restricted to Copernicus Service accounts. Request one via the CDSE support portal before proceeding. Without this, no API calls can be made.",
+        api:"Account prerequisite", critical:null },
+      { id:"0.3", title:"Validate CRS Compatibility",
+        detail:"Sentinel Hub BYOC supports only: WGS84 (EPSG:4326), Web Mercator (EPSG:3857), any UTM zone (EPSG:32601–32660, 32701–32760), or Europe LAEA (EPSG:3035). If the source data uses a different CRS, reprojection must be planned into the COG conversion step.",
+        api:null, critical:"Files crossing either geographic pole are explicitly rejected by BYOC." }
+    ]
+  },
+  {
+    id: 1, label: "Phase 1", title: "Data Migration — AWS → CreoDIAS", color: "#f59e0b",
+    steps: [
+      { id:"1.1", title:"Create a CreoDIAS S3 Bucket",
+        detail:"Provision a new S3 bucket on the CreoDIAS platform. This is required because Sentinel Hub on CDSE can only read from buckets in the CreoDIAS ecosystem — it cannot directly access private AWS S3 buckets in us-west-2.",
+        api:"CreoDIAS S3 Console", critical:null },
+      { id:"1.2", title:"Cross-Cloud Transfer (AWS → CreoDIAS)",
+        detail:"Use a server-side transfer tool (e.g., rclone, AWS CLI with a compatible endpoint, or a dedicated migration job) to copy the 50 TB archive. For efficiency at this scale, run transfers in parallel across multiple prefixes/folders. Verify checksums (ETag / SHA-256) post-transfer for a sample set.",
+        api:null, critical:"At 50 TB, even at 1 Gbps sustained, raw transfer takes ~12 hours minimum. Plan for retries and throttling." }
+    ]
+  },
+  {
+    id: 2, label: "Phase 2", title: "COG Conversion Pipeline", color: "#a78bfa",
+    steps: [
+      { id:"2.1", title:"Convert to Cloud-Optimised GeoTIFF",
+        detail:"Use GDAL ≥ 3.1 with the native COG driver for a single-pass conversion. Recommended command:\n\ngdal_translate -of COG -co COMPRESS=DEFLATE -co BLOCKSIZE=1024 -co RESAMPLING=AVERAGE -co OVERVIEWS=IGNORE_EXISTING input.ext output.tiff\n\nAdd -a_nodata <VALUE> if nodata exists. Add -co PREDICTOR=YES for additional compression on numeric data. For planar multi-band COGs specifically, use the two-step gdal_translate → gdaladdo → gdal_translate workflow with -co INTERLEAVE=BAND.",
+        api:"GDAL COG Driver", critical:"Internal tile size must be 256×256 to 2048×2048. COG header must not exceed 1 MB. Max 100 bands per file; chunky multi-band COGs are capped at 10 bands." },
+      { id:"2.2", title:"Parallelise & Scale",
+        detail:"50 TB of high-resolution imagery represents thousands of tiles. Run the GDAL conversion in a distributed job (e.g., AWS Batch, a Kubernetes cluster, or GNU Parallel across nodes). Each worker converts a subset of tiles independently — the operation is embarrassingly parallel.",
+        api:null, critical:null },
+      { id:"2.3", title:"Validate Output COGs",
+        detail:"For each output file verify: (a) it is a valid COG (use cogeo-mosaic or rio cogeo validate), (b) the CRS is in the supported set, (c) band count and bit-depth are consistent across the collection, (d) file extensions are uniform (e.g., all .tiff), and (e) filenames follow the same naming pattern across every tile.",
+        api:"rio cogeo validate", critical:"File names MUST be consistent across all tiles. A tile missing even one band file will fail ingestion." }
+    ]
+  },
+  {
+    id: 3, label: "Phase 3", title: "Upload & Bucket Policy", color: "#34d399",
+    steps: [
+      { id:"3.1", title:"Upload Validated COGs to CreoDIAS Bucket",
+        detail:'Upload the converted COGs into a structured prefix hierarchy, e.g.:\n\ns3://<bucket>/aerial/<tile_id>/<BAND>.tiff\n\nThis maps directly onto the (BAND) placeholder that BYOC uses to locate band files within a tile path.',
+        api:null, critical:null },
+      { id:"3.2", title:"Apply Sentinel Hub Bucket Policy",
+        detail:'Attach the following bucket policy to grant Sentinel Hub read access. Replace <bucket_name> with your bucket:\n\n{\n  "Version": "2012-10-17",\n  "Statement": [{\n    "Sid": "Sentinel Hub permissions",\n    "Effect": "Allow",\n    "Principal": {"AWS": "arn:aws:iam::ddf4c98b5e6647f0a246f0624c8341d9:root"},\n    "Action": ["s3:GetBucketLocation","s3:ListBucket","s3:GetObject"],\n    "Resource": ["arn:aws:s3:::<bucket_name>","arn:aws:s3:::<bucket_name>/*"]\n  }]\n}',
+        api:"S3 Bucket Policy", critical:"Without this policy, every subsequent BYOC API call will fail with a permission error." }
+    ]
+  },
+  {
+    id: 4, label: "Phase 4", title: "BYOC Collection & Tile Ingestion", color: "#fb923c",
+    steps: [
+      { id:"4.1", title:"Create BYOC Collection",
+        detail:'POST to the BYOC collections endpoint. Supply the collection name and the CreoDIAS bucket (prefixed with your Project ID):\n\ncollection = {\n  "name": "Customer Aerial Archive",\n  "s3Bucket": "PROJECT_ID:bucket_name"\n}\nresponse = oauth.post(\n  \'https://sh.dataspace.copernicus.eu/api/v1/byoc/collections\',\n  json=collection\n)\n\nThe response returns a collection_id — keep this for all subsequent calls.',
+        api:"POST /api/v1/byoc/collections", critical:"The bucket cannot be changed after the collection is created." },
+      { id:"4.2", title:"Configure Bands (Manual or Auto)",
+        detail:'Option A — Auto: ingest the first tile without band config; BYOC names bands after filenames automatically (e.g., RGB.tiff → RGB_1, RGB_2, RGB_3).\n\nOption B — Manual (recommended for clarity):\n\n"additionalData": {\n  "bands": {\n    "Red":   {"source":"RGB","bandIndex":1,"bitDepth":16},\n    "Green": {"source":"RGB","bandIndex":2,"bitDepth":16},\n    "Blue":  {"source":"RGB","bandIndex":3,"bitDepth":16}\n  }\n}\n\nBands can be renamed later but their source mapping is immutable once set.',
+        api:"PUT /api/v1/byoc/collections/{id}", critical:null },
+      { id:"4.3", title:"Ingest Tiles at Scale",
+        detail:'For each tile, POST with its path and optional sensing time and cover geometry:\n\ntile = {\n  "path": "aerial/<tile_id>/(BAND).tiff",\n  "sensingTime": "2024-06-15T10:30:00Z",\n  "coverGeometry": { ... GeoJSON ... }\n}\nresponse = oauth.post(\n  f\'.../collections/{collection_id}/tiles\',\n  json=tile\n)\n\nPoll tile status via GET on the tile endpoint until status == "INGESTED". Parallelise across many concurrent requests. At 50 TB this is hundreds or thousands of tiles.',
+        api:"POST /api/v1/byoc/collections/{id}/tiles", critical:"Cover geometries should exclude nodata regions. Omitting them defaults to the bounding box, which degrades mosaicking quality where tiles overlap." },
+      { id:"4.4", title:"Generate Cover Geometries",
+        detail:"For high overlap scenarios, use gdal_trace_outline on a 1%-subsampled version of each tile to extract a precise valid-data polygon. Convert WKT output to GeoJSON and include the correct CRS URN (e.g., urn:ogc:def:crs:EPSG::32633). Polygons must have ≤ 100 vertices.",
+        api:"gdal_trace_outline", critical:null }
+    ]
+  },
+  {
+    id: 5, label: "Phase 5", title: "Verification & Browser Access", color: "#60a5fa",
+    steps: [
+      { id:"5.1", title:"Verify Collection Metadata",
+        detail:"Query the collection endpoint to confirm: extent (bounding box in WGS84) covers the expected geography, hasSensingTimes is true, fromSensingTime / toSensingTime span the archive's date range, and all tiles report status INGESTED (not FAILED).",
+        api:"GET /api/v1/byoc/collections/{id}", critical:null },
+      { id:"5.2", title:"Test via Process API",
+        detail:"Issue a SentinelHubRequest with an evalscript referencing the BYOC collection's bands, scoped to a known tile's bounding box and sensing time. A successful PNG/TIFF response confirms end-to-end data flow.",
+        api:"Process API", critical:null },
+      { id:"5.3", title:"Expose via Copernicus Browser",
+        detail:"The ingested BYOC collection is now queryable through Sentinel Hub's standard interfaces — Process API, OGC WMS/WMTS, and the Copernicus Browser. No further configuration is needed to make the data browsable on CDSE.",
+        api:"Copernicus Browser", critical:null }
+    ]
+  }
+];
+
+const constraints = [
+  { title:"Cross-Cloud Migration Required",        desc:"CDSE runs on CreoDIAS, not AWS. The 50 TB archive must be transferred before any BYOC operation.",                                                                          color:"#f59e0b" },
+  { title:"COG Spec Compliance",                   desc:"DEFLATE compression, 1024×1024 block size, supported CRS only. Header ≤ 1 MB. JPEG is not supported.",                                                              color:"#a78bfa" },
+  { title:"Bucket Policy is a Hard Gate",          desc:"Sentinel Hub's IAM principal must have GetObject, ListBucket, and GetBucketLocation on the CreoDIAS bucket.",                                                        color:"#34d399" },
+  { title:"Cover Geometries Matter at Scale",      desc:"Precise cover geometries prevent nodata rendering artefacts in overlapping tile mosaics. Generated via gdal_trace_outline.",                                         color:"#fb923c" },
+  { title:"Tile Naming Consistency",               desc:"Every tile in a collection must contain the exact same set of band files. A single missing file fails the entire tile.",                                             color:"#ef4444" },
+  { title:"Scale Strategy",                        desc:"At 50 TB, both the COG conversion and tile ingestion must be parallelised. Use distributed compute for conversion; concurrent API calls for ingestion.",              color:"#60a5fa" }
+];
+
+// ─── STATE ───────────────────────────────────────────────────────────────────
+let activePhase  = null;   // null = show all
+let expandedStep = null;   // step id string or null
+
+// ─── RENDER ──────────────────────────────────────────────────────────────────
+function render() {
+  renderPills();
+  renderPhases();
+}
+
+function renderPills() {
+  const container = document.getElementById('pills');
+  container.innerHTML = phases.map(p => {
+    const isActive = activePhase === p.id;
+    return `<button class="pill ${isActive ? 'active' : ''}"
+                    style="${isActive ? `background:${p.color}18;border-color:${p.color};color:${p.color};` : ''}"
+                    data-phase="${p.id}">
+              <span class="dot" style="color:${p.color}">◆</span>
+              ${p.label}
+              <span class="count">${p.steps.length}</span>
+            </button>`;
+  }).join('');
+
+  container.querySelectorAll('.pill').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = Number(btn.dataset.phase);
+      activePhase = (activePhase === id) ? null : id;
+      render();
+    });
+  });
+}
+
+function renderPhases() {
+  const container = document.getElementById('phases');
+  container.innerHTML = phases.map(phase => {
+    if (activePhase !== null && activePhase !== phase.id) return '';
+
+    const stepsHTML = phase.steps.map(step => {
+      const isOpen = expandedStep === step.id;
+      const apiHTML = step.api ? `<span class="api-badge">${escHtml(step.api)}</span>` : '';
+      const criticalHTML = step.critical
+        ? `<div class="critical-box">
+             <span class="critical-icon">⚠</span>
+             <span class="critical-text">${escHtml(step.critical)}</span>
+           </div>` : '';
+
+      return `<div class="step-wrap">
+                <div class="step-card ${isOpen ? 'open' : ''}" data-step="${step.id}" style="${isOpen ? `border-color:${phase.color}40;` : ''}">
+                  <div class="step-head">
+                    <div class="step-head-left">
+                      <span class="step-id" style="color:${phase.color}">${step.id}</span>
+                      <span class="step-title">${escHtml(step.title)}</span>
+                    </div>
+                    <div class="step-head-right">
+                      ${apiHTML}
+                      <span class="chevron">▸</span>
+                    </div>
+                  </div>
+                  <div class="step-body">
+                    <p class="step-detail">${escHtml(step.detail)}</p>
+                    ${criticalHTML}
+                  </div>
+                </div>
+              </div>`;
+    }).join('');
+
+    return `<div class="phase-block">
+              <div class="phase-header" data-phase="${phase.id}">
+                <div class="phase-badge" style="background:${phase.color}15;border:1px solid ${phase.color}40;color:${phase.color}">${phase.id}</div>
+                <div>
+                  <span class="phase-title">${escHtml(phase.title)}</span>
+                  <span class="phase-count">${phase.steps.length} step${phase.steps.length > 1 ? 's' : ''}</span>
+                </div>
+              </div>
+              ${stepsHTML}
+            </div>`;
+  }).join('');
+
+  // Wire step toggles
+  container.querySelectorAll('.step-card').forEach(card => {
+    card.addEventListener('click', () => {
+      const id = card.dataset.step;
+      expandedStep = (expandedStep === id) ? null : id;
+      render();
+    });
+  });
+
+  // Wire phase-header toggles (same as pill)
+  container.querySelectorAll('.phase-header').forEach(hdr => {
+    hdr.addEventListener('click', () => {
+      const id = Number(hdr.dataset.phase);
+      activePhase = (activePhase === id) ? null : id;
+      render();
+    });
+  });
+}
+
+function renderConstraints() {
+  document.getElementById('constraints').innerHTML = constraints.map(c => `
+    <div class="constraint-card" style="border:1px solid ${c.color}25;border-left:3px solid ${c.color};">
+      <div class="constraint-title" style="color:${c.color}">${escHtml(c.title)}</div>
+      <div class="constraint-desc">${escHtml(c.desc)}</div>
+    </div>
+  `).join('');
+}
+
+// tiny HTML-escape helper
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ─── INIT ────────────────────────────────────────────────────────────────────
+render();
+renderConstraints();
+</script>
+</body>
+</html>

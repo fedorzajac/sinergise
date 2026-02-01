@@ -21,6 +21,12 @@ from network import get_s2_acquisition_dates, get_token, payload
 
 load_dotenv()
 
+CLIENT_ID = os.getenv("CLIENT_ID") or ""
+CLIENT_SECRET = os.getenv("CLIENT_SECRET") or ""
+COPERNICUS_TOKEN_URL = os.getenv("COPERNICUS_TOKEN_URL") or ""
+DATA_SPACE_URL = os.getenv("DATA_SPACE_URL") or ""
+CDSE_SEARCH_URL = os.getenv("CDSE_SEARCH_URL") or ""
+
 parser = argparse.ArgumentParser(description="Creating NDVI")
 
 parser.add_argument("--start", required=True, help="Start date YYYY-MM-DD")
@@ -42,25 +48,21 @@ print(bb_file)
 # !important -> convert to raster (only bounding box for now for simplicity)
 bbox = convert_polygon_to_utm(args.bb_file)
 
-
-CLIENT_ID = os.getenv("CLIENT_ID")
-CLIENT_SECRET = os.getenv("CLIENT_SECRET")
-COPERNICUS_TOKEN_URL = os.getenv("COPERNICUS_TOKEN_URL") or ""
-DATA_SPACE_URL = os.getenv("DATA_SPACE_URL")
-CDSE_SEARCH_URL = os.getenv("CDSE_SEARCH_URL")
-
-
-token = get_token(CLIENT_ID, CLIENT_SECRET, COPERNICUS_TOKEN_URL)
+token = get_token(client_id = CLIENT_ID, client_secret = CLIENT_SECRET, url = COPERNICUS_TOKEN_URL)
 
 dekadals = generate_dekadal_dates(args.start, args.end)
 print(dekadals)
 
 flyover_dates = get_s2_acquisition_dates(
-    args.bb_file, CDSE_SEARCH_URL, token, args.start, args.end
+    aoi_geojson_path=args.bb_file,
+    cdse_search_url=CDSE_SEARCH_URL,
+    token=token,
+    start=args.start,
+    end=args.end
 )
 print(flyover_dates)
 
-download_dates = acquisition_dates_to_download_dates(dekadals, flyover_dates)
+download_dates = acquisition_dates_to_download_dates(dekadals=dekadals, available=flyover_dates)
 print(download_dates)
 
 
@@ -76,11 +78,14 @@ resized_filenames = []
 for date in download_dates:
     print(f"Downloading for {date}")
     json_payload = payload(
-        date, date, bbox.tolist(), read_file("./sentinel.js")
+        start_date=date,
+        end_date=date,
+        bounding_box=bbox.tolist(),
+        evalscript=read_file("./sentinel.js")
     )  # same date for start and end
 
     response = requests.post(
-        DATA_SPACE_URL, headers=headers, data=json.dumps(json_payload)
+        url=DATA_SPACE_URL, headers=headers, data=json.dumps(json_payload)
     )
 
     if response.status_code == 200:
@@ -91,12 +96,12 @@ for date in download_dates:
         print(f"Picture saved {saved_file}")
         print(ndvi_raster_stats(saved_file))
         # resizing
-        resized = add_to_filename(saved_file, "10m")
+        resized = add_to_filename(saved_file, "_10m")
         resized_filenames.append(resized)
         resize_raster_res(saved_file, resized, int(args.resolution))
         print(ndvi_raster_stats(resized))
     else:
-        print("Chyba:", response.status_code, response.text)
+        print("Error:", response.status_code, response.text)
 
 # get supplemental data
 
@@ -105,33 +110,34 @@ resized__supplemental_filenames = []
 for date in dekadals:
     print(f"Downloading for {date}")
     json_payload = payload(
-        date,
-        date,
-        bbox.tolist(),
-        read_file("./clms.js"),
-        "byoc-ab0e1e8e-508c-4faa-9b5b-c9c4734ef29e",
+        start_date=date,
+        end_date=date,
+        bounding_box=bbox.tolist(),
+        evalscript=read_file("./clms.js"),
+        data_collection="byoc-ab0e1e8e-508c-4faa-9b5b-c9c4734ef29e",
     )  # same date for start and end
 
     response = requests.post(
-        DATA_SPACE_URL, headers=headers, data=json.dumps(json_payload)
+        url=DATA_SPACE_URL, headers=headers, data=json.dumps(json_payload)
     )
 
     if response.status_code == 200:
-        saved_file = add_to_filename(args.output, "_supplemental_" + date)
+        saved_file = add_to_filename(filename=args.output, addon="_supplemental_" + date)
         with open(saved_file, "wb") as f:
             f.write(response.content)
 
         print(f"Picture saved {saved_file}")
         print(ndvi_raster_stats(saved_file))
         # resizing
-        resized = add_to_filename(saved_file, "10m")
+        resized = add_to_filename(filename=saved_file, addon="_10m")
         resized__supplemental_filenames.append(resized)
-        resize_raster_res(
-            saved_file, resized, int(args.resolution), 1
-        )  # 2 because the index values are on the second layer/band (does not work)
+        resize_raster_res(src_path=saved_file, dst_path=resized, res=int(args.resolution), band=1)
+        # 2 because the index values are on the second layer/band (does not work)
+        # yes, in the end I changed the default clms.js file, so the default is on band 1
+
         print(ndvi_raster_stats(resized))
     else:
-        print("Chyba:", response.status_code, response.text)
+        print("Error:", response.status_code, response.text)
 
 print(resized__supplemental_filenames)
 

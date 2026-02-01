@@ -69,7 +69,7 @@ so the steps will be: read geojson -> convert to UTM geometry with geopandas.
 zone are 6 degrees, else it should be splitted into multiple zones
 
 
-uh, ok, finally getting towards some results.
+finally getting towards some results.
 I did manage to convert lon/lat into utm and send a request to copernicus., however, I cant manage to get to 10m resolution...
 ```bash
 {"error":{"status":400,"reason":"Bad Request","message":"`width = 2624`, calculated from resx, is larger than allowed 2500.\n","code":"COMMON_BAD_PAYLOAD","errors":[{"parameter":"output->resx","violation":"`width = 2624`, calculated from resx, is larger than allowed 2500."}]}}
@@ -130,31 +130,6 @@ so now, I also have the supplemental images, which are already aligned, so I wil
 
 little stop here, the code look awful now, but I am focusing on having working code, I will refactor later.
 
-in the meantime I am checking and try to evaluate task 2 with gemini and copilot if I am too much astray. Gemini (as expected) didnt provide meaningful answer, so its copilot show time
--> byoc and amazon s3 is only metadata and indexing and tile service (hmmm)
-
-aaaah so that does not mean that I have to fill the 50TB with data, the data are already there, I have to make it available to api. so copilot evaluation:
-```bash
-🎯 Summary: Are You Far Off?
-✔️ Good instincts:
-
-You are thinking in terms of workflow
-You consider checking / validation
-You consider pipeline concerns
-
-❌ Where you diverged:
-
-BYOC does not involve recalculation or serving logic
-No cross-customer storage reuse
-No rate limiting
-No local caching decisions
-No “is data newer” logic
-No DB to track reuse
-
-Your design thinking was general-systems-oriented, but BYOC is much simpler and purpose-built.
-```
-I will revisit it in my thoughts again then.
-
 ok so last step: fill NaN.
 
 Ah, forgot to mention that I now  work only with already downloaded data to not overwhelm the API, so I have code im separate file. not to mention that I have no tests implemented apart from small sanity checks :D
@@ -182,6 +157,9 @@ TODO:
      - naming, and overall flow
      - error handling and checking, logging
      - generalization, cleanup
+     - add tests
+     - !parallelization (but I am not sure on python with GIL :/ ?)
+
 
 ## Task 2
 
@@ -203,4 +181,83 @@ Output: A clear Diagram (using the tools of your choice) OR a structured
 Markdown document.
 
 Ok so, part of the process will be involving checks is the data re correct, creating indexes.
+
+I am checking and try to evaluate task 2 with gemini and copilot if I am too much astray. Gemini (as expected) didnt provide meaningful answer, so its copilot show time
+-> byoc and amazon s3 is only metadata and indexing and tile service (hmmm)
+- well obviously, I didnt read the task carefully, so I started thinking about different concept (professional deformation)
+
+aaaah so that does not mean that I have to fill the 50TB with data, the data are already there, I have to make it available to api. so copilot evaluation:
+```bash
+🎯 Summary: Are You Far Off?
+✔️ Good instincts:
+
+You are thinking in terms of workflow
+You consider checking / validation
+You consider pipeline concerns
+
+❌ Where you diverged:
+
+BYOC does not involve recalculation or serving logic
+No cross-customer storage reuse
+No rate limiting
+No local caching decisions
+No “is data newer” logic
+No DB to track reuse
+
+Your design thinking was general-systems-oriented, but BYOC is much simpler and purpose-built.
+```
+
+GPT provided different thoughts... but meh.
+
+Basicaly the answer lies in the links provided:
+
+https://documentation.dataspace.copernicus.eu/APIs/SentinelHub/Byoc.html
+and
+the docs from your company: https://sentinelhub-py.readthedocs.io/en/latest/examples/byoc_request.html
+
+so before doing any ingestion, we will need to check all the constrains, data_names, COG header etc mentioned in the docs.
+
+directly from docs:
+
+*Your data needs to be organized into collections of tiles. Each tile needs to contain a set of bands and (optionally) an acquisition date and time. Tiles with the same bands can be grouped into collections. Think of the Sentinel-2 data source as a collection of Sentinel-2 tiles.*
+
+and I also found this in docs: https://www.youtube.com/watch?v=OGxwRHtn5H8
+
+
+### Proposed Workflow
+
+1. **Data Preparation**
+  valid COG format, Validate CRS, tiling, overviews, and metadata
+
+2. **Metadata Extraction**
+
+  Get spatial extent (bbox), CRS, Acquisition timestamps, Band information
+
+3. **Access Configuration**
+
+  Provide Sentinel Hub read access to private S3 bucket and use signed URLs or IAM-based access
+
+4. **BYOC Collection Creation**
+
+  Create a BYOC collection via Sentinel Hub API and define collection metadata and band schema
+
+1. **COG Registration**
+
+  Register individual COG URLs with metadata
+
+1. **Indexing and Availability**
+  Sentinel Hub indexes data and data becomes accessible via: Copernicus Browser, Web map service (WMS) and Process API
+
+1. **Incremental Updates**
+  Register new COGs as they arrive, no reprocessing of historical data
+
+----------
+
+Underline notes
+
+### why me, why you should hire me, what I bring to the team
+  - I am used to work in english, and with international team (I have worked with japanese, at some point my team leader was from Austria, I had colleaque from Swiss, also from from India, few managers from US) all of them were very nice and helpful and that was the nature of work culture in IBM.
+  - reliability (I focus on getting things done in the first place, refactoring can be done afterwards, also that was the approach that I choosed with this task)
+  - creativity, i see new ways of how to to things, in terms of effectivity and innovations and with free hand I an able to implement innovations (I am creative person by nature so I like suggest improvements if i know enough about the process and act on that. (upon discussion and team consent, I am not that person that will change all processes with nobody knowing :D )
+  - I am kind and easy to talk to. I teached kids japanese for 4 years in the free time center, so I actually enjoy explaining the same concept over and over :)
 
