@@ -239,7 +239,7 @@ and I also found this in docs: https://www.youtube.com/watch?v=OGxwRHtn5H8
 
 4. **BYOC Collection Creation**
 
-  Create a BYOC collection via Sentinel Hub API and define collection metadata and band schema
+  Define collection metadata and band schema and create a BYOC collection via Sentinel Hub API
 
 1. **COG Registration**
 

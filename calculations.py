@@ -37,6 +37,13 @@ def convert_polygon_to_utm(file_path: str) -> BBox:
     return gdf.total_bounds  # returning ndarray
 
 
+# calculating epsg to make code more universal
+def calculate_epsg(file_path: str) -> int:
+    gdf = gpd.read_file(file_path)
+    utm_crs = gdf.estimate_utm_crs()
+    epsg  = int(utm_crs.to_epsg())
+    return epsg
+
 def resize_raster_res(src_path: str, dst_path: str, res: int, band: int = 1):
     with rasterio.open(src_path) as src:
         transform, width, height = calculate_default_transform(
@@ -260,40 +267,28 @@ def fill_ndvi_gaps(
 def rasters_are_compatible(a_path: str, b_path: str) -> bool:
     with rasterio.open(a_path) as a, rasterio.open(b_path) as b:
 
-        if a.shape != b.shape:
-            # raise ValueError("Main and supplemental rasters must have the same shape")
-            # hmm this is a little bit tricky where to return errors because:
-            # you return one by one but you solve one at a time
-            # so I just return false and "log" the error and no filling happens or instead of logging I raise value error
-            print("shape mismatch")
-            print(a.shape)
-            print(b.shape)
+        # raise ValueError("Main and supplemental rasters must have the same shape")
+        # hmm this is a little bit tricky where to return errors because:
+        # you return one by one but you solve one at a time
+        # so I just return false and "log" the error and no filling happens or instead of logging I raise value error
+        errors: list[str] = []
 
-        if a.crs != b.crs:
-            print("Coordinates reference system mismatched!")
-            print(a.crs)
-            print(b.crs)
+        with rasterio.open(a_path) as a, rasterio.open(b_path) as b:
+            if a.crs != b.crs:
+                errors.append(f"CRS mismatch: {a.crs} vs {b.crs}")
 
-        if a.width != b.width or a.height != b.height:
-            print("size mismatch!")
-            print(a.width + a.height)
-            print(b.width + b.height)
+            if (a.width, a.height) != (b.width, b.height):
+                errors.append(f"Dimensions mismatch: {a.width}×{a.height} vs {b.width}×{b.height}")
 
-        if not np.allclose(a.transform, b.transform):
-            print("transform mismatch")
-            print(a.transform)
-            print(b.transform)
+            if not np.allclose(a.transform, b.transform):
+                errors.append(f"Transform mismatch: {a.transform} vs {b.transform}")
 
-        if a.dtypes[0] != b.dtypes[0]:
-            print("type mismatch")
-            print(a.dtypes[0])
-            print(b.dtypes[0])
+            if a.dtypes[0] != "float32" or b.dtypes[0] != "float32":
+                errors.append(f"Dtype not float32: {a.dtypes[0]} vs {b.dtypes[0]}")
 
-        return (
-            a.crs == b.crs
-            and a.transform == b.transform
-            and a.width == b.width
-            and a.height == b.height
-            and a.dtypes[0] == b.dtypes[0] == "float32"
-            and np.allclose(a.transform, b.transform)
-        )
+        if errors:
+            for e in errors:
+                print("Compatibility check — %s: %s", a_path, e)
+            return False
+
+        return True

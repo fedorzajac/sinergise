@@ -144,11 +144,12 @@ It is a **data registration and indexing service** for existing **Cloud Optimize
    - Use signed URLs or IAM-based access
 
 4. **BYOC Collection Creation**
-   - Create a BYOC collection via Sentinel Hub API
    - Define collection metadata and band schema
+   - Create a BYOC collection via Sentinel Hub API
 
 5. **COG Registration**
    - Register individual COG URLs with metadata
+   - retry strategy
 
 6. **Indexing and Availability**
    - Sentinel Hub indexes data

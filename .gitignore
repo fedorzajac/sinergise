@@ -2,3 +2,6 @@
 old
 env
 __pycache__
+.env
+!.env.example
+processing_images.py

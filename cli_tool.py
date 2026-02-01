@@ -15,7 +15,8 @@ from calculations import (
     ndvi_raster_stats,
     read_file,
     resize_raster_res,
-    fill_ndvi_gaps
+    fill_ndvi_gaps,
+    calculate_epsg,
 )
 from network import get_s2_acquisition_dates, get_token, payload
 
@@ -47,6 +48,8 @@ print(bb_file)
 
 # !important -> convert to raster (only bounding box for now for simplicity)
 bbox = convert_polygon_to_utm(args.bb_file)
+# generalization - calculate epsg
+epsg = calculate_epsg(args.bb_file)
 
 token = get_token(client_id = CLIENT_ID, client_secret = CLIENT_SECRET, url = COPERNICUS_TOKEN_URL)
 
@@ -81,6 +84,7 @@ for date in download_dates:
         start_date=date,
         end_date=date,
         bounding_box=bbox.tolist(),
+        epsg=epsg,
         evalscript=read_file("./sentinel.js")
     )  # same date for start and end
 
@@ -113,6 +117,7 @@ for date in dekadals:
         start_date=date,
         end_date=date,
         bounding_box=bbox.tolist(),
+        epsg=epsg,
         evalscript=read_file("./clms.js"),
         data_collection="byoc-ab0e1e8e-508c-4faa-9b5b-c9c4734ef29e",
     )  # same date for start and end

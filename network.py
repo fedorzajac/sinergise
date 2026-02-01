@@ -9,6 +9,7 @@ def get_token(
     url="https://identity.dataspace.copernicus.eu/auth/realms/CDSE/protocol/openid-connect/token",
 ) -> str | None:
     # raise error if parameter missing or request fail
+    # retry/refresh
     data = {
         "grant_type": "client_credentials",
         "client_id": client_id,
@@ -51,6 +52,7 @@ def payload(
     end_date: str,
     bounding_box: list,
     evalscript: str,
+    epsg: int,
     data_collection: str = "sentinel-2-l2a",
 ) -> dict:
     json_payload = {
@@ -58,7 +60,7 @@ def payload(
             "bounds": {
                 # "properties": {"crs": "http://www.opengis.net/def/crs/OGC/1.3/CRS84"}, # this is for lon/lat
                 "properties": {
-                    "crs": "http://www.opengis.net/def/crs/EPSG/0/32633"
+                    "crs": f"http://www.opengis.net/def/crs/EPSG/0/{epsg}"
                 },  # and this is for metric
                 "bbox": bounding_box,
             },
