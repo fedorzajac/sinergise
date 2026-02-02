@@ -266,13 +266,3 @@ and I also found this in docs: https://www.youtube.com/watch?v=OGxwRHtn5H8 - Gen
 - sentinel hub plugin (37:00) -> webinar
 - BYOC tool in github
 
-
-Underline notes
-
-### why me, why you should hire me, what I bring to the team
-  - I am used to work in english, and with international team (I have worked with japanese, at some point my team leader was from Austria, I had colleaque from Swiss, also from from India, few managers from US) all of them were very nice and helpful and that was the nature of work culture in IBM.
-  - I used to work with technical and also non technical colleagues I also teached kids (8y-22y) japanese for 4 years in the free time center, so I actually enjoy explaining the same concept over and over :)
-  - reliability (I focus on getting things done in the first place, refactoring can be done afterwards, also that was the approach that I choosed with this task)
-  - creativity, i see new ways of how to to things, in terms of effectivity and innovations and with free hand I an able to implement innovations (I am creative person by nature so I like suggest improvements if i know enough about the process and act on that. (upon discussion and team consent of course, I am not that person that will change all processes with nobody knowing :D )
-  - fun and I am easy to talk to. I am sure we will be on the same frequency (pun intended :D)
-
