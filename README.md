@@ -125,42 +125,77 @@ It is a **data registration and indexing service** for existing **Cloud Optimize
 - Zero data duplication
 
 ---
+## Proposed Workflow
 
-### Proposed Workflow
+### 1. Check data compatibility with Sentinel Hub
+- tiles and bands constraints
+- constraints and settings in documentation
+- inspect data in QGIS
 
-1. **Data Preparation**
-   - Ensure all imagery is in valid COG format
-   - Validate CRS, tiling, overviews, and metadata
+### 2. Convert data to COG with GDAL
+- make sure required tools are installed (`gdal >= 3`)
+- remove internal TIFF mask if needed
+- retiling / conversion into smaller tiles
+- GDAL example commands in documentation
 
-2. **Metadata Extraction**
-   - Extract:
-     - Spatial extent (bbox)
-     - CRS
-     - Acquisition timestamps
-     - Band information
+### 3. Create account and bucket in Amazon S3
+- region:
+  - `us-west-2` for US
+  - `eu-central-1` for EU
+  - (bucket region requirements in documentation)
+- unique bucket name
+- bucket settings:
+  - permissions from documentation
+  - JSON policy from documentation → update bucket
+- upload tiles
 
-3. **Access Configuration**
-   - Grant Sentinel Hub read access to private S3 bucket
-   - Use signed URLs or IAM-based access
+### 4. Create collection and add it to the dashboard
+- create new collection:
+  - name
+  - type: **BYOC**
+  - location (AWS bucket region)
+  - bucket name
+- save collection
+- copy **Collection ID**
+- Sentinel Hub only displays data from that bucket (data stays in S3)
 
-4. **BYOC Collection Creation**
-   - Define collection metadata and band schema
-   - Create a BYOC collection via Sentinel Hub API
+### 5. Add tiles
+- dashboard → tiles → add tile
+- copy S3 path from bucket (≈ 21:21 in video)
+- rename file to define default bands
+- add tiles one by one (:D)
+- note on naming conventions (≈ 23:45)
+- if file is deleted from the bucket:
+  - it must be deleted from Sentinel Hub as well
+  - or re-ingested
+- set / fix band naming
 
-5. **COG Registration**
-   - Register individual COG URLs with metadata
-   - retry strategy
+### 6. Request in Sentinel Hub
+- set correct time range
+- set EvalScript
+- convert values correctly:
+  - `0–255 → 0–1` (`RGB / 255`)
+- set bounding box
+- test request
+- set NoData value mask in dashboard (≈ 30:00)
+- optional:
+  - cover geometry (documentation)
+  - cover geometry editor
 
-6. **Indexing and Availability**
-   - Sentinel Hub indexes data
-   - Data becomes accessible via:
-     - Copernicus Browser
-     - WMS
-     - Process API
+### 7. Process API request / visualization
+- configuration utility → new configuration
+- new layer:
+  - source: BYOC
+  - collection: BYOC Collection ID (from AWS) (≈ 33:38)
+- copy EvalScript
+- save
+- EO Browser:
+  - set sensing time
+  - click **Visualise**
 
-7. **Incremental Updates**
-   - Register new COGs as they arrive
-   - No reprocessing of historical data
+### 8. QGIS integration
+- install Sentinel Hub plugin (≈ 37:00, separate webinar)
+- BYOC tool available on GitHub
 
 ---
 

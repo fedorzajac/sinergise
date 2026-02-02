@@ -215,40 +215,64 @@ https://documentation.dataspace.copernicus.eu/APIs/SentinelHub/Byoc.html
 and
 the docs from your company: https://sentinelhub-py.readthedocs.io/en/latest/examples/byoc_request.html
 
-so before doing any ingestion, we will need to check all the constrains, data_names, COG header etc mentioned in the docs.
+so before doing any ingestion, we will need to check all the constrains for tiles and bands, data_names, COG header etc mentioned in the docs.
 
 directly from docs:
 
 *Your data needs to be organized into collections of tiles. Each tile needs to contain a set of bands and (optionally) an acquisition date and time. Tiles with the same bands can be grouped into collections. Think of the Sentinel-2 data source as a collection of Sentinel-2 tiles.*
 
-and I also found this in docs: https://www.youtube.com/watch?v=OGxwRHtn5H8
+and I also found this in docs: https://www.youtube.com/watch?v=OGxwRHtn5H8 - General Workflow@3:14 - but we assume that the data are already on amazon s3 bucket.
 
 
 ### Proposed Workflow
 
-1. **Data Preparation**
-  valid COG format, Validate CRS, tiling, overviews, and metadata
+1 check data compatibility with sentinel hub, tiles, bands constrains
+- constrains and setting in doc
+- inspect data in QGIS
+2 convert data to COG with GDAL
+- make sure you have necessary tools installed (gdal-3)
+- remove internal tiff mask if needed
+- retiling - conversion for smaller tiles
+(gdal example command in docs)
+3 create account and bucket in amazon s3
+- us-west-2 for US or eu-central for eu (bucket region in docs)
+- uniq name
+- bucket settings (from docs) permissions, from json from docs, update bucket
+- upload tiles
+4 create collection and add to dashboard
+- create new collection (name, type-byoc, location(asw bucket location))  and bucket name, save
+- copy collection ID
+- sentinel hub only displays data from that bucket
+5 add tile
+- tile, add tile
+- copy s3 url from bucket (21:21) - rename file for default bands
+- one by one (:D)
+- note on naming (23:45)
+- deleting file on bucket, must be deleted from sentinel hub as well/ or reingest
+- bands naming
+6 Request in sentinel hub
+- set time in time range
+- set evalscript
+- set correct values (0-255 to 0-1 = RGB/255)
+- set bouding box
+- test request
+- set mask for no data value in dashboard (30:00)
+- additional cover geometry (docs), cover geometry editor
+7 process API request
+- new configuration, configuration utility, new layer - source and collection -BYOC Collection ID from AWS (33:38)
+- copy evalscript, save
+- EO brovser -> sensing time -> click visualise
+8 QGIS
+- sentinel hub plugin (37:00) -> webinar
+- BYOC tool in github
 
-2. **Metadata Extraction**
 
-  Get spatial extent (bbox), CRS, Acquisition timestamps, Band information
+Underline notes
 
-3. **Access Configuration**
+### why me, why you should hire me, what I bring to the team
+  - I am used to work in english, and with international team (I have worked with japanese, at some point my team leader was from Austria, I had colleaque from Swiss, also from from India, few managers from US) all of them were very nice and helpful and that was the nature of work culture in IBM.
+  - I used to work with technical and also non technical colleagues I also teached kids (8y-22y) japanese for 4 years in the free time center, so I actually enjoy explaining the same concept over and over :)
+  - reliability (I focus on getting things done in the first place, refactoring can be done afterwards, also that was the approach that I choosed with this task)
+  - creativity, i see new ways of how to to things, in terms of effectivity and innovations and with free hand I an able to implement innovations (I am creative person by nature so I like suggest improvements if i know enough about the process and act on that. (upon discussion and team consent of course, I am not that person that will change all processes with nobody knowing :D )
+  - fun and I am easy to talk to. I am sure we will be on the same frequency (pun intended :D)
 
-  Provide Sentinel Hub read access to private S3 bucket and use signed URLs or IAM-based access
-
-4. **BYOC Collection Creation**
-
-  Define collection metadata and band schema and create a BYOC collection via Sentinel Hub API
-
-1. **COG Registration**
-
-  Register individual COG URLs with metadata
-
-1. **Indexing and Availability**
-  Sentinel Hub indexes data and data becomes accessible via: Copernicus Browser, Web map service (WMS) and Process API
-
-1. **Incremental Updates**
-  Register new COGs as they arrive, no reprocessing of historical data
-
-----------
