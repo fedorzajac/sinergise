@@ -1,5 +1,7 @@
 # How to run the code
 
+note: forgot to mention that you need to create `.env` file inside directory root and fill it with contenct from `.env.example`
+
 ```bash
 python3.13 -m venv env
 source env/bin/activate
