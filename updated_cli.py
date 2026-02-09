@@ -129,13 +129,13 @@ for date in download_dates:
         else:
             logging.error("Error:", response.status_code, response.text)
 
-    # --- merge all tiles ---
-    mosaic, out_transform = merge(chunks)
 
     # chunk check
     if not chunks:
         logging.error(f"No valid chunks for {date}, skipping")
         continue
+    # --- merge all tiles ---
+    mosaic, out_transform = merge(chunks)
 
     out_meta = chunks[0].meta.copy()
     out_meta.update({
@@ -204,13 +204,13 @@ for date in dekadals:
         else:
             logging.error("Error:", response.status_code, response.text)
 
-    # --- merge all tiles ---
-    mosaic, out_transform = merge(chunks)
 
     # chunk check
     if not chunks:
         logging.error(f"No valid chunks for {date}, skipping")
         continue
+    # --- merge all tiles ---
+    mosaic, out_transform = merge(chunks)
 
     out_meta = chunks[0].meta.copy()
     out_meta.update({

@@ -267,7 +267,10 @@ and I also found this in docs: https://www.youtube.com/watch?v=OGxwRHtn5H8 - Gen
 - BYOC tool in github
 
 
-# Feedback: utilize 1024 raster and split the polygon
+# Feedback:
+
+utilize 10m resolution and split the polygon for smaller areas.
+
 - splitting polygon, lets assume it is just rectangle or square... so I will try to split it into 4 boxes
 - then I should probably ... so the approcach would be probably this - get polygon, dissect it, get data for each and then merge it... there should be some function rasterio.merge if I remember correctly - saw it somewhere pop out. but... do utm before or after...
 
@@ -275,7 +278,7 @@ ok to do that, I need to create test as I dont want to mingle with my existing c
 
 GPT told me that I should first convert the lon/lat into utm and do the splitting later because of geometry, otherwise pixel resolution will differ between tiles.
 
-done toste and the tiles are splitted, checking by eye.
+done tests and the tiles are splitted, checking by eye.
 
 so now I need to do this: for each subtile i need data and then stich it. so lets get back into test.
 
