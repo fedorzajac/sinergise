@@ -18,7 +18,7 @@ from calculations import (
     fill_ndvi_gaps,
     calculate_epsg,
 )
-from network import get_s2_acquisition_dates, get_token, payload
+from network import get_s2_acquisition_dates, get_token, payload_old
 
 load_dotenv()
 
@@ -80,12 +80,12 @@ resized_filenames = []
 
 for date in download_dates:
     print(f"Downloading for {date}")
-    json_payload = payload(
+    json_payload = payload_old(
         start_date=date,
         end_date=date,
         bounding_box=bbox.tolist(),
         epsg=epsg,
-        evalscript=read_file("./sentinel.js")
+        evalscript=read_file("./sentinel_old.js")
     )  # same date for start and end
 
     response = requests.post(
@@ -113,7 +113,7 @@ resized__supplemental_filenames = []
 
 for date in dekadals:
     print(f"Downloading for {date}")
-    json_payload = payload(
+    json_payload = payload_old(
         start_date=date,
         end_date=date,
         bounding_box=bbox.tolist(),

@@ -233,3 +233,5 @@ It is a **data registration and indexing service** for existing **Cloud Optimize
   - Add structured logging
   - Finalize CLI interface
   - Implement minimal automated tests
+
+

@@ -77,6 +77,48 @@ def payload(
             ],
         },
         "output": {
+            # "width": 512,
+            # "height": 512,  # we dont want specific size
+            # but 10 by 10 resolution
+            "resx": 10,
+            "resy": 10 # eh not possible with my free plan
+            # removed in the end
+        },
+        "evalscript": evalscript,
+    }
+    return json_payload
+
+
+def payload_old(
+    start_date: str,
+    end_date: str,
+    bounding_box: list,
+    evalscript: str,
+    epsg: int,
+    data_collection: str = "sentinel-2-l2a",
+) -> dict:
+    json_payload = {
+        "input": {
+            "bounds": {
+                # "properties": {"crs": "http://www.opengis.net/def/crs/OGC/1.3/CRS84"}, # this is for lon/lat
+                "properties": {
+                    "crs": f"http://www.opengis.net/def/crs/EPSG/0/{epsg}"
+                },  # and this is for metric
+                "bbox": bounding_box,
+            },
+            "data": [
+                {
+                    "type": data_collection,
+                    "dataFilter": {
+                        "timeRange": {
+                            "from": f"{start_date}T00:00:00Z",
+                            "to": f"{end_date}T23:59:59Z",  # end date included
+                        }
+                    },
+                }
+            ],
+        },
+        "output": {
             "width": 512,
             "height": 512,  # we dont want specific size
             # but 10 by 10 resolution

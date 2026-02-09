@@ -266,3 +266,49 @@ and I also found this in docs: https://www.youtube.com/watch?v=OGxwRHtn5H8 - Gen
 - sentinel hub plugin (37:00) -> webinar
 - BYOC tool in github
 
+
+# Feedback: utilize 1024 raster and split the polygon
+- splitting polygon, lets assume it is just rectangle or square... so I will try to split it into 4 boxes
+- then I should probably ... so the approcach would be probably this - get polygon, dissect it, get data for each and then merge it... there should be some function rasterio.merge if I remember correctly - saw it somewhere pop out. but... do utm before or after...
+
+ok to do that, I need to create test as I dont want to mingle with my existing code right now.
+
+GPT told me that I should first convert the lon/lat into utm and do the splitting later because of geometry, otherwise pixel resolution will differ between tiles.
+
+done toste and the tiles are splitted, checking by eye.
+
+so now I need to do this: for each subtile i need data and then stich it. so lets get back into test.
+
+I need token, but only once ofcourse...
+oooh it is not trivial now.... i need acquisition dates, but that is only flyover on that area so... lets assume that the dates even on split area are ideal.
+
+aaaah, now I got no data for one chunk from the bounding box :D
+
+encountered these errors:
+```
+TIFFFetchDirectory: Sanity check failed
+TIFFReadEncodedStrip() failed
+```
+
+ok after a bit of thinkering and chatting with copilot back and forth... I have and output... but! its all black!!! oh my!
+
+so apparently, setting the -99999 for no data is not exactly good idea, but, I figured yout that I just might specify the null, or NaN value into "nodata" in meta.update... like this:
+
+```python
+out_meta.update({
+    "height": mosaic.shape[1],
+    "width": mosaic.shape[2],
+    "transform": out_transform,
+    "nodata": -99999.0
+})
+# and
+mosaic = mosaic.astype("float32")
+# mosaic[np.isnan(mosaic)] = -99999 # this is actually wrong, it should be:
+mosaic[mosaic == -99999] = np.nan
+
+```
+
+let's try! eh, no, just in the sentinel data. I believe the data from clms are already in a good shape.
+
+Ok, done, now I can sleep in peace :)
+

@@ -19,8 +19,7 @@
     function evaluatePixel(s) {
     // If pixel is bad → return nodata
         if (BAD_SCL.includes(s.SCL)) {
-            // return [NaN];
-            return [-99999]; // need -99999 othervise. sentinel returns error when full of NaN.
+            return [NaN];
         }
 
         // Else compute NDVI

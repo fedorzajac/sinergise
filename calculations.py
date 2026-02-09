@@ -3,7 +3,7 @@ import os
 from bisect import bisect_left
 from datetime import date, datetime, timedelta
 from pathlib import Path
-from typing import Tuple, TypeAlias
+from typing import TypeAlias, List
 
 import geopandas as gpd
 import numpy as np
@@ -12,6 +12,21 @@ import requests
 from rasterio.warp import Resampling, calculate_default_transform, reproject
 
 BBox: TypeAlias = list[float]
+
+def split_bbox(bbox) -> List[BBox]:
+    # bbox must be iterable with 4 values
+    minx, miny, maxx, maxy = map(float, bbox)
+
+    midx = (minx + maxx) / 2.0
+    midy = (miny + maxy) / 2.0
+
+    return [
+        [minx, miny, midx, midy],   # bottom-left
+        [midx, miny, maxx, midy],   # bottom-right
+        [minx, midy, midx, maxy],   # top-left
+        [midx, midy, maxx, maxy],   # top-right
+    ]
+
 
 
 def add_to_filename(filename: str, addon: str) -> str:
@@ -155,7 +170,7 @@ def interpolate_ndvi_to_dekadals(
     flyover_dates: list[str],  # ISO strings: "YYYY-MM-DD"
     dekadal_dates: list[str],  # ISO strings
     output_template: str,  # e.g. "graz_{}_10m.tiff" where {} will be dekadal date
-):
+) -> list:
     """
     image_paths : paths to downloaded NDVI rasters (float32, same shape & CRS)
     flyover_dates : corresponding dates for each raster
