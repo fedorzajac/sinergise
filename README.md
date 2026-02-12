@@ -6,7 +6,9 @@ note: forgot to mention that you need to create `.env` file inside directory roo
 python3.13 -m venv env
 source env/bin/activate
 pip install -r requirements.txt
-python cli_tool.py --start 2025-08-01 --end 2025-08-31 -bbf AOI_test.geojson -o graz_4.tiff
+# python cli_tool.py --start 2025-08-01 --end 2025-08-31 -bbf AOI_test.geojson -o graz_4.tiff
+# after refactoring
+python -m cli_tool.cli --start 2025-08-01 --end 2025-08-31 -bbf AOI_test.geojson -o graz_4.tiff
 ```
 
 but that is tricky, normally it should be in dev container or docker
