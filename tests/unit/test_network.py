@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, Mock, patch
 import pytest
 from requests import RequestException
 
-from src.ndvi_processor.network.network import (get_s2_acquisition_dates,
+from cli_tool.network import (get_s2_acquisition_dates,
                                                 get_token)
 
 
@@ -13,7 +13,7 @@ def test_get_token_success():
     mock_response = Mock()
     mock_response.json.return_value = {"access_token": "test-token-123"}
 
-    with patch('ndvi_processor.network.network.requests.post', return_value=mock_response):
+    with patch('cli_tool.network.requests.post', return_value=mock_response):
         token = get_token("client-id", "client-secret")
 
     assert token == "test-token-123"
@@ -60,7 +60,7 @@ def test_get_s2_acquisition_dates_success(tmp_geojson):
         ]
     }
 
-    with patch("ndvi_processor.network.network.requests.post") as mock_post:
+    with patch("cli_tool.network.requests.post") as mock_post:
         mock = MagicMock()
         mock.json.return_value = mock_response
         mock.raise_for_status.return_value = None
@@ -96,7 +96,7 @@ def test_get_s2_acquisition_dates_invalid_geojson(tmp_path):
 def test_get_s2_acquisition_dates_api_error(tmp_geojson):
     """Test handling of API request failure."""
 
-    with patch("ndvi_processor.network.network.requests.post") as mock_post:
+    with patch("cli_tool.network.requests.post") as mock_post:
         mock_post.side_effect = RequestException("Network error")
 
         with pytest.raises(RuntimeError):
