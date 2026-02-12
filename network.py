@@ -1,5 +1,5 @@
 import json
-
+import os
 import requests
 
 
@@ -30,11 +30,25 @@ def get_token(
 
 
 def get_s2_acquisition_dates(aoi_geojson_path, cdse_search_url, token, start, end):
-    headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
 
-    # Read AOI
-    with open(aoi_geojson_path) as f:
-        aoi = json.load(f)
+    if not os.path.exists(aoi_geojson_path):
+        raise FileNotFoundError(f"AOI file not found: {aoi_geojson_path}")
+    if not isinstance(start, str) or not isinstance(end, str):
+        raise ValueError("start and end must be ISO date strings (YYYY-MM-DD)")
+    if not token:
+        raise ValueError("Missing authentication token")
+
+    # Trying to read AOI
+    try:
+        with open(aoi_geojson_path) as f:
+            aoi = json.load(f)
+    except json.JSONDecodeError as e:
+        raise ValueError(f"Invalid GeoJSON file: {e}")
+
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json"
+    }
 
     # Search payload
     payload = {
@@ -43,12 +57,25 @@ def get_s2_acquisition_dates(aoi_geojson_path, cdse_search_url, token, start, en
         "intersects": aoi,
         "limit": 100,  # max 100 results per page
     }
-    print(payload)
-    r = requests.post(cdse_search_url, headers=headers, data=json.dumps(payload))
-    r.raise_for_status()
-    results = r.json().get("features", [])
 
-    dates = sorted([f["properties"]["datetime"][:10] for f in results])
+    try:
+        r = requests.post(
+            cdse_search_url,
+            headers=headers,
+            data=payload,
+            timeout=30
+        )
+        r.raise_for_status()
+    except requests.RequestException as e:
+        raise RuntimeError(f"CDSE API request failed: {e}")
+
+    features = r.json().get("features", [])
+
+    dates = sorted(set(
+        f["properties"]["datetime"][:10]
+        for f in features
+    ))
+
     return dates
 
 
