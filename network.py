@@ -10,15 +10,23 @@ def get_token(
 ) -> str | None:
     # raise error if parameter missing or request fail
     # retry/refresh
+    if not client_id or not client_secret:
+        raise ValueError("client_id and client_secret are required")
+
     data = {
         "grant_type": "client_credentials",
         "client_id": client_id,
         "client_secret": client_secret,
     }
-    r = requests.post(url, data=data)
-    r.raise_for_status()
-    print(r.json()["access_token"])
-    return r.json()["access_token"]
+    try:
+        r = requests.post(url, data=data)
+        r.raise_for_status()
+        response_data = r.json()
+        return response_data["access_token"]
+    except requests.exceptions.RequestException as e:
+        raise RuntimeError(f"Failed to get auth token: {e}")
+    except KeyError:
+        raise RuntimeError("Invalid response: missing access_token in API response")
 
 
 def get_s2_acquisition_dates(aoi_geojson_path, cdse_search_url, token, start, end):
