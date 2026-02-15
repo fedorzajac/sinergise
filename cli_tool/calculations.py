@@ -13,6 +13,7 @@ from rasterio.warp import Resampling, calculate_default_transform, reproject
 
 BBox: TypeAlias = list[float]
 
+
 def split_bbox(bbox) -> List[BBox]:
     # bbox must be iterable with 4 values
     minx, miny, maxx, maxy = map(float, bbox)
@@ -21,12 +22,11 @@ def split_bbox(bbox) -> List[BBox]:
     midy = (miny + maxy) / 2.0
 
     return [
-        [minx, miny, midx, midy],   # bottom-left
-        [midx, miny, maxx, midy],   # bottom-right
-        [minx, midy, midx, maxy],   # top-left
-        [midx, midy, maxx, maxy],   # top-right
+        [minx, miny, midx, midy],  # bottom-left
+        [midx, miny, maxx, midy],  # bottom-right
+        [minx, midy, midx, maxy],  # top-left
+        [midx, midy, maxx, maxy],  # top-right
     ]
-
 
 
 def add_to_filename(filename: str, addon: str) -> str:
@@ -35,7 +35,7 @@ def add_to_filename(filename: str, addon: str) -> str:
 
 
 def read_file(path: str) -> str:
-    with open(os.path.join(os.path.dirname(__file__),path)) as f:
+    with open(os.path.join(os.path.dirname(__file__), path)) as f:
         content = f.read()
     return content
 
@@ -45,19 +45,46 @@ def read_file(path: str) -> str:
 # returns meters from equator and meridian?
 # [ 520647.58484602 5201547.78622006  546889.23529065 5217998.04777367]
 def convert_polygon_to_utm(file_path: str) -> BBox:
+    """
+    Docstring for convert_polygon_to_utm
+
+    :param file_path: Description
+    :type file_path: str
+    :return: Description
+    :rtype: BBox
+    """
     gdf = gpd.read_file(file_path)
     utm_crs = gdf.estimate_utm_crs()
     gdf = gdf.to_crs(utm_crs)
     print(gdf.total_bounds)
     return gdf.total_bounds  # returning ndarray
 
+def calculate_bbox_area(bbox: BBox) -> float:
+    """
+    calculating bounding box are in sq meters
+    Docstring for calculate_bbox_area
+
+    :param bbox: Description
+    :type bbox: BBox
+    :return: Description
+    :rtype: float
+    """
+    minx, miny, maxx, maxy = bbox
+    width = maxx - minx
+    height = maxy - miny
+    return width * height
+
+def needs_splitting(bbox: BBox, max_area_m2: float = 1_000_000) -> bool:
+    area = calculate_bbox_area(bbox)
+    return area > max_area_m2
 
 # calculating epsg to make code more universal
 def calculate_epsg(file_path: str) -> int:
     gdf = gpd.read_file(file_path)
     utm_crs = gdf.estimate_utm_crs()
-    epsg  = int(utm_crs.to_epsg())
+    epsg = int(utm_crs.to_epsg())
     return epsg
+
 
 def resize_raster_res(src_path: str, dst_path: str, res: int, band: int = 1):
     with rasterio.open(src_path) as src:
@@ -293,7 +320,9 @@ def rasters_are_compatible(a_path: str, b_path: str) -> bool:
                 errors.append(f"CRS mismatch: {a.crs} vs {b.crs}")
 
             if (a.width, a.height) != (b.width, b.height):
-                errors.append(f"Dimensions mismatch: {a.width}×{a.height} vs {b.width}×{b.height}")
+                errors.append(
+                    f"Dimensions mismatch: {a.width}×{a.height} vs {b.width}×{b.height}"
+                )
 
             if not np.allclose(a.transform, b.transform):
                 errors.append(f"Transform mismatch: {a.transform} vs {b.transform}")

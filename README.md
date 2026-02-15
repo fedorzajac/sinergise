@@ -1,6 +1,9 @@
 # Update
 project was refactored after submission, as I didnt have enough time and I was dealing with for me unexplored area.
 
+# TODO
+- more tests, precommit hook for tests, black, isort, pylance
+
 # How to run the code
 
 note: forgot to mention that you need to create `.env` file inside directory root and fill it with contenct from `.env.example`

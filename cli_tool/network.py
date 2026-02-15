@@ -2,6 +2,14 @@ import json
 import os
 
 import requests
+import logging
+
+import numpy as np
+import rasterio
+import requests
+from dotenv import load_dotenv
+from rasterio.io import MemoryFile
+from rasterio.merge import merge
 
 
 def get_token(
@@ -46,10 +54,7 @@ def get_s2_acquisition_dates(aoi_geojson_path, cdse_search_url, token, start, en
     except json.JSONDecodeError as e:
         raise ValueError(f"Invalid GeoJSON file: {e}")
 
-    headers = {
-        "Authorization": f"Bearer {token}",
-        "Content-Type": "application/json"
-    }
+    headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
 
     # Search payload
     payload = {
@@ -61,10 +66,7 @@ def get_s2_acquisition_dates(aoi_geojson_path, cdse_search_url, token, start, en
 
     try:
         r = requests.post(
-            cdse_search_url,
-            headers=headers,
-            data=json.dumps(payload),
-            timeout=30
+            cdse_search_url, headers=headers, data=json.dumps(payload), timeout=30
         )
         r.raise_for_status()
     except requests.RequestException as e:
@@ -72,10 +74,7 @@ def get_s2_acquisition_dates(aoi_geojson_path, cdse_search_url, token, start, en
 
     features = r.json().get("features", [])
 
-    dates = sorted(set(
-        f["properties"]["datetime"][:10]
-        for f in features
-    ))
+    dates = sorted(set(f["properties"]["datetime"][:10] for f in features))
 
     return dates
 
@@ -117,7 +116,7 @@ def payload(
             # "height": 512,  # we dont want specific size
             # but 10 by 10 resolution
             "resx": 10,
-            "resy": 10 # eh not possible with my free plan
+            "resy": 10,  # eh not possible with my free plan
             # removed in the end
         },
         "evalscript": evalscript,
@@ -125,43 +124,104 @@ def payload(
     return json_payload
 
 
-def payload_old(
-    start_date: str,
-    end_date: str,
-    bounding_box: list,
-    evalscript: str,
+def download_tile(
+    date: str,
+    chunk: list,
     epsg: int,
-    data_collection: str = "sentinel-2-l2a",
-) -> dict:
-    json_payload = {
-        "input": {
-            "bounds": {
-                # "properties": {"crs": "http://www.opengis.net/def/crs/OGC/1.3/CRS84"}, # this is for lon/lat
-                "properties": {
-                    "crs": f"http://www.opengis.net/def/crs/EPSG/0/{epsg}"
-                },  # and this is for metric
-                "bbox": bounding_box,
-            },
-            "data": [
-                {
-                    "type": data_collection,
-                    "dataFilter": {
-                        "timeRange": {
-                            "from": f"{start_date}T00:00:00Z",
-                            "to": f"{end_date}T23:59:59Z",  # end date included
-                        }
-                    },
-                }
-            ],
-        },
-        "output": {
-            "width": 512,
-            "height": 512,  # we dont want specific size
-            # but 10 by 10 resolution
-            # "resx": 10,
-            # "resy": 10 # eh not possible with my free plan
-            # removed in the end
-        },
-        "evalscript": evalscript,
-    }
-    return json_payload
+    evalscript: str,
+    headers: dict,
+    api_url: str,
+    data_collection: str = "sentinel-2-l2a"
+):
+    """Download single tile from API."""
+    from cli_tool.network import payload
+
+    json_payload = payload(
+        start_date=date,
+        end_date=date,
+        bounding_box=[float(f) for f in chunk],
+        epsg=epsg,
+        evalscript=evalscript,
+        data_collection=data_collection
+    )
+
+    response = requests.post(
+        url=api_url,
+        headers=headers,
+        data=json.dumps(json_payload)
+    )
+
+    if response.status_code != 200:
+        logging.error(f"Error: {response.status_code} - {response.text}")
+        return None
+
+    return response
+
+
+def download_and_merge_tiles(
+    date: str,
+    bbox_tiles: list,
+    epsg: int,
+    evalscript: str,
+    headers: dict,
+    api_url: str,
+    data_collection: str = "sentinel-2-l2a"
+):
+    """Download all tiles and merge into single raster."""
+    logger = logging.getLogger(__name__)
+    logger.info(f"Downloading for {date}")
+
+    chunks = []
+
+    for chunk in bbox_tiles:
+        logger.info(f"Processing tile: {chunk}")
+
+        response = download_tile(
+            date=date,
+            chunk=chunk,
+            epsg=epsg,
+            evalscript=evalscript,
+            headers=headers,
+            api_url=api_url,
+            data_collection=data_collection
+        )
+
+        if response is None:
+            continue
+
+        # Validate raster data
+        try:
+            memfile = MemoryFile(response.content)
+            ds = memfile.open()
+            ds.read(1)  # validate file
+            chunks.append(ds)
+        except Exception as e:
+            logger.error(f"Invalid raster data: {e}")
+            continue
+
+    # Check if we have any valid chunks
+    if not chunks:
+        logger.error(f"No valid chunks for {date}")
+        return None
+
+    # Merge all tiles
+    mosaic, out_transform = merge(chunks)
+
+    # Create metadata
+    out_meta = chunks[0].meta.copy()
+    out_meta.update({
+        "height": mosaic.shape[1],
+        "width": mosaic.shape[2],
+        "transform": out_transform,
+        "nodata": np.nan,
+    })
+
+    # Clean up: replace sentinel's -99999 with NaN
+    mosaic = mosaic.astype("float32")
+    mosaic[mosaic == -99999] = np.nan
+
+    # Close all datasets
+    for ds in chunks:
+        ds.close()
+
+    return mosaic, out_meta

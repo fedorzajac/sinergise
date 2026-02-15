@@ -3,9 +3,13 @@ from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 from requests import RequestException
+import numpy as np
 
-from cli_tool.network import (get_s2_acquisition_dates,
-                                                get_token)
+from cli_tool.network import (
+    get_s2_acquisition_dates,
+    download_tile,
+    download_and_merge_tiles,
+    get_token)
 
 
 def test_get_token_success():
@@ -107,3 +111,68 @@ def test_get_s2_acquisition_dates_api_error(tmp_geojson):
                 start="2024-01-01",
                 end="2024-01-10"
             )
+
+def test_download_tile_success():
+    """Test successful tile download."""
+    mock_response = Mock()
+    mock_response.status_code = 200
+    mock_response.content = b"fake tiff data"
+
+    with patch('cli_tool.network.requests.post', return_value=mock_response):
+        with patch('cli_tool.network.payload', return_value={}):
+            result = download_tile(
+                date="2025-08-02",
+                chunk=[0, 0, 1000, 1000],
+                epsg=32633,
+                evalscript="fake script",
+                headers={"Authorization": "Bearer token"},
+                api_url="https://api.example.com"
+            )
+
+    assert result is not None
+    assert result.status_code == 200
+
+
+def test_download_and_merge_tiles_success():
+    """Test successful download and merge."""
+    # Mock response
+    mock_response = Mock()
+    mock_response.status_code = 200
+    mock_response.content = b"GeoTIFF content"
+
+    # Mock rasterio dataset
+    mock_ds = MagicMock()
+    mock_ds.read.return_value = np.ones((100, 100), dtype=np.float32)
+    mock_ds.meta = {
+        'driver': 'GTiff',
+        'dtype': 'float32',
+        'nodata': None,
+        'width': 100,
+        'height': 100,
+        'count': 1,
+        'crs': 'EPSG:32633',
+        'transform': Mock()
+    }
+
+    # Mock merge output
+    mock_mosaic = np.ones((1, 200, 200), dtype=np.float32)
+    mock_transform = Mock()
+
+    with patch('cli_tool.network.download_tile', return_value=mock_response):
+        with patch('cli_tool.network.MemoryFile') as mock_memfile:
+            mock_memfile.return_value.open.return_value = mock_ds
+            with patch('cli_tool.network.merge', return_value=(mock_mosaic, mock_transform)):
+                result = download_and_merge_tiles(
+                    date="2025-08-02",
+                    bbox_tiles=[[0, 0, 500, 500], [500, 0, 1000, 500]],
+                    epsg=32633,
+                    evalscript="fake script",
+                    headers={"Authorization": "Bearer token"},
+                    api_url="https://api.example.com"
+                )
+
+    assert result is not None
+    mosaic, out_meta = result
+    assert mosaic.shape == (1, 200, 200)
+    assert out_meta['width'] == 200
+    assert out_meta['height'] == 200
