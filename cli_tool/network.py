@@ -10,6 +10,7 @@ import requests
 from dotenv import load_dotenv
 from rasterio.io import MemoryFile
 from rasterio.merge import merge
+from cli_tool.settings import Settings
 
 
 def get_token(
@@ -127,11 +128,12 @@ def payload(
 def download_tile(
     date: str,
     chunk: list,
-    epsg: int,
+    # epsg: int,
     evalscript: str,
-    headers: dict,
-    api_url: str,
-    data_collection: str = "sentinel-2-l2a"
+    # headers: dict,
+    # api_url: str,
+    # data_collection: str = "sentinel-2-l2a"
+    settings: Settings
 ):
     """Download single tile from API."""
     from cli_tool.network import payload
@@ -140,14 +142,14 @@ def download_tile(
         start_date=date,
         end_date=date,
         bounding_box=[float(f) for f in chunk],
-        epsg=epsg,
+        epsg=settings.epsg,
         evalscript=evalscript,
-        data_collection=data_collection
+        data_collection=settings.data_collection
     )
 
     response = requests.post(
-        url=api_url,
-        headers=headers,
+        url=settings.api_url,
+        headers=settings.headers,
         data=json.dumps(json_payload)
     )
 
@@ -161,11 +163,12 @@ def download_tile(
 def download_and_merge_tiles(
     date: str,
     bbox_tiles: list,
-    epsg: int,
+    # epsg: int,
     evalscript: str,
-    headers: dict,
-    api_url: str,
-    data_collection: str = "sentinel-2-l2a"
+    # headers: dict,
+    # api_url: str,
+    # data_collection: str = "sentinel-2-l2a"
+    settings: Settings
 ):
     """Download all tiles and merge into single raster."""
     logger = logging.getLogger(__name__)
@@ -179,11 +182,12 @@ def download_and_merge_tiles(
         response = download_tile(
             date=date,
             chunk=chunk,
-            epsg=epsg,
             evalscript=evalscript,
-            headers=headers,
-            api_url=api_url,
-            data_collection=data_collection
+            # epsg=settings.epsg,
+            # headers=settings.headers,
+            # api_url=settings.api_url,
+            # data_collection=settings.data_collection
+            settings=settings
         )
 
         if response is None:

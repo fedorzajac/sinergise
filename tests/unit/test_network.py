@@ -11,6 +11,8 @@ from cli_tool.network import (
     download_and_merge_tiles,
     get_token)
 
+from cli_tool.settings import Settings
+
 
 def test_get_token_success():
     """Test that get_token returns token on success."""
@@ -117,16 +119,19 @@ def test_download_tile_success():
     mock_response = Mock()
     mock_response.status_code = 200
     mock_response.content = b"fake tiff data"
+    mock_settings = MagicMock()
+    mock_settings.epsg = 32633
+    mock_settings.headers = {"Authorization": "Bearer fake"}
+    mock_settings.api_url = "https://fake.com"
+    mock_settings.data_collection = "sentinel-2-l2a"
 
     with patch('cli_tool.network.requests.post', return_value=mock_response):
         with patch('cli_tool.network.payload', return_value={}):
             result = download_tile(
                 date="2025-08-02",
                 chunk=[0, 0, 1000, 1000],
-                epsg=32633,
                 evalscript="fake script",
-                headers={"Authorization": "Bearer token"},
-                api_url="https://api.example.com"
+                settings=mock_settings
             )
 
     assert result is not None
@@ -139,6 +144,12 @@ def test_download_and_merge_tiles_success():
     mock_response = Mock()
     mock_response.status_code = 200
     mock_response.content = b"GeoTIFF content"
+
+    mock_settings = MagicMock()
+    mock_settings.epsg = 32633
+    mock_settings.headers = {"Authorization": "Bearer fake"}
+    mock_settings.api_url = "https://fake.com"
+    mock_settings.data_collection = "sentinel-2-l2a"
 
     # Mock rasterio dataset
     mock_ds = MagicMock()
@@ -165,10 +176,11 @@ def test_download_and_merge_tiles_success():
                 result = download_and_merge_tiles(
                     date="2025-08-02",
                     bbox_tiles=[[0, 0, 500, 500], [500, 0, 1000, 500]],
-                    epsg=32633,
+                    # epsg=32633,
                     evalscript="fake script",
-                    headers={"Authorization": "Bearer token"},
-                    api_url="https://api.example.com"
+                    # headers={"Authorization": "Bearer token"},
+                    # api_url="https://api.example.com"
+                    settings=mock_settings
                 )
 
     assert result is not None

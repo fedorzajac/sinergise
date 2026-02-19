@@ -23,6 +23,8 @@ from cli_tool.network import (
     download_and_merge_tiles
     )
 
+from settings import Settings
+
 # from rasterio.errors import RasterioIOError
 
 
@@ -34,6 +36,9 @@ def main(logging, args):
         bb_file = json.load(f)
 
     logging.info(bb_file)
+
+    settings = Settings(bb_file=bb_file, api_url=DATA_SPACE_URL)
+
 
     # !important -> convert to raster (only bounding box for now for simplicity)
     bbox = convert_polygon_to_utm(args.bb_file)
