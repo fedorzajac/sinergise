@@ -1,4 +1,7 @@
 # Update
+
+project is currently under refactoring.
+
 project was refactored after submission, as I didnt have enough time and I was dealing with for me unexplored area.
 
 # TODO
